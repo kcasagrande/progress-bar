@@ -2,9 +2,9 @@
 
 DEFAULT_WIDTH=200
 DEFAULT_HEIGHT=20
-DEFAULT_BACKGROUND_COLOR=white
+DEFAULT_BACKGROUND_COLOR=gradient:gray-lightgray
 DEFAULT_FOREGROUND_COLOR=gradient:orange-yellowgreen
-DEFAULT_TEXT_COLOR=black
+DEFAULT_TEXT_COLOR=gray10
 DEFAULT_PERCENTAGE=100
 
 usage () {
@@ -29,27 +29,27 @@ while :
 do
 	case "$1" in
 		"-w"|"-width")
-			width="${2}"
+			argWidth="${2}"
 			shift 2
 			;;
 		"-h"|"-height")
-			height="${2}"
+			argHeight="${2}"
 			shift 2
 			;;
 		"-f"|"--foreground"|"--foreground-color")
-			foregroundColor="${2}"
+			argForegroundColor="${2}"
 			shift 2
 			;;
 		"-b"|"--background"|"--background-color")
-			backgroundColor="${2}"
+			argBackgroundColor="${2}"
 			shift 2
 			;;
 		"-t"|"--text"|"--text-color")
-			textColor="${2}"
+			argTextColor="${2}"
 			shift 2
 			;;
 		"-p"|"--progress"|"--percent"|"--percentage")
-			percentage="${2}"
+			argPercentage="${2}"
 			shift 2
 			;;
 		--)
@@ -60,23 +60,50 @@ do
 done
 outputFile="${1}"
 
-foregroundWidth=$(( ( ${width:-${DEFAULT_WIDTH}} * ${percentage:-${DEFAULT_PERCENTAGE}} / 100) - 1 ))
-cornerSize=$(( ${height:-${DEFAULT_HEIGHT}} / 2 ))
-backgroundBottomRight=$(( ${width:-${DEFAULT_WIDTH}} - 1 )),$(( ${height:-${DEFAULT_HEIGHT}} - 1 ))
-foregroundBottomRight=${foregroundWidth},$(( ${height:-${DEFAULT_HEIGHT}} - 1 ))
+width=${argWidth:-${DEFAULT_WIDTH}}
+height=${argHeight:-${DEFAULT_HEIGHT}}
+foregroundColor=${argForegroundColor:-${DEFAULT_FOREGROUND_COLOR}}
+backgroundColor=${argBackgroundColor:-${DEFAULT_BACKGROUND_COLOR}}
+textColor=${argTextColor:-${DEFAULT_TEXT_COLOR}}
+percentage=${argPercentage:-${DEFAULT_PERCENTAGE}}
+
+cornerSize=$(( ${height} / 2 ))
+bottom=$(( ${height} - 1 ))
+right=$(( ${width} - 1 ))
+foregroundRight=$(( ( ${width} * ${percentage} / 100) - 1 ))
+backgroundBottomRight=${right},${bottom}
+foregroundBottomRight=${foregroundRight},${bottom}
 
 magick \
-	-define gradient:vector=0,0,${width:-${DEFAULT_WIDTH}},0 \
-	-size ${width:-${DEFAULT_WIDTH}}x${height:-${DEFAULT_HEIGHT}} \
+	-size ${width}x${height} \
 	xc:transparent \
-	-fill ${backgroundColor:-${DEFAULT_BACKGROUND_COLOR}} \
-	-draw "roundrectangle 0,0 ${backgroundBottomRight} ${cornerSize},${cornerSize}" \
-	-fill ${foregroundColor:-${DEFAULT_FOREGROUND_COLOR}} \
-	-draw "roundrectangle 0,0 ${foregroundBottomRight} ${cornerSize},${cornerSize}" \
-	-gravity center \
-	-pointsize ${height:-${DEFAULT_HEIGHT}} \
-	-fill ${textColor:-${DEFAULT_TEXT_COLOR}} \
-	-font "Liberation-Mono" \
-	-weight Bold \
-	-draw "text 0,0 '${percentage:-${DEFAULT_PERCENTAGE}}%'" \
+	\( \
+		xc:transparent \
+		-fill ${backgroundColor} \
+		-draw "roundrectangle 0,0 ${right},${bottom} ${cornerSize},${cornerSize}" \
+	\) \
+	-composite \
+	\( \
+		xc:transparent \
+		-define gradient:vector=0,0,${width},0 \
+		-fill ${foregroundColor} \
+		-draw "roundrectangle 0,0 ${foregroundRight},${bottom} ${cornerSize},${cornerSize}" \
+	\) \
+	-composite \
+	\( \
+		xc:transparent \
+		-define gradient:vector=0,0,0,${height} \
+		-fill gradient:white-transparent \
+		-draw "roundrectangle 0,0 ${foregroundRight},${bottom} ${cornerSize},${cornerSize}" \
+	\) \
+	-composite \
+	\( \
+		xc:transparent \
+		-gravity center \
+		-pointsize ${height} \
+		-fill ${textColor} \
+		-font "Liberation-Sans" \
+		-draw "text 0,0 '${percentage}%'" \
+	\) \
+	-composite \
 	png:-
